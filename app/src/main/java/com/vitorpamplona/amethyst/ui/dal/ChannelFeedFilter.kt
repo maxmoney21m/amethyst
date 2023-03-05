@@ -6,7 +6,7 @@ import com.vitorpamplona.amethyst.model.LocalCache
 import com.vitorpamplona.amethyst.model.Note
 
 object ChannelFeedFilter: FeedFilter<Note>() {
-  lateinit var account: Account
+//  lateinit var account: Account
   lateinit var channel: Channel
 
   fun loadMessagesBetween(accountLoggedIn: Account, channelId: String) {

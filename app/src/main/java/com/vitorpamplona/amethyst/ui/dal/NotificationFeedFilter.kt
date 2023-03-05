@@ -5,7 +5,7 @@ import com.vitorpamplona.amethyst.model.Note
 import com.vitorpamplona.amethyst.service.model.*
 
 object NotificationFeedFilter: FeedFilter<Note>() {
-  lateinit var account: Account
+//  lateinit var account: Account
 
   override fun feed(): List<Note> {
     return account.userProfile()

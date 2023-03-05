@@ -6,7 +6,7 @@ import com.vitorpamplona.amethyst.model.Note
 import com.vitorpamplona.amethyst.model.User
 
 object ChatroomFeedFilter: FeedFilter<Note>() {
-  var account: Account? = null
+//  var account: Account? = null
   var withUser: User? = null
 
   fun loadMessagesBetween(accountIn: Account, userId: String) {

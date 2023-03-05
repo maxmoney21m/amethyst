@@ -6,7 +6,7 @@ import com.vitorpamplona.amethyst.model.Note
 import com.vitorpamplona.amethyst.model.User
 
 object UserProfileConversationsFeedFilter: FeedFilter<Note>() {
-  var account: Account? = null
+//  var account: Account? = null
   var user: User? = null
 
   fun loadUserProfile(accountLoggedIn: Account, userId: String) {

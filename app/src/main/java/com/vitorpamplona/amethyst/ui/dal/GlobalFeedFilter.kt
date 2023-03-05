@@ -8,7 +8,7 @@ import com.vitorpamplona.amethyst.service.model.LongTextNoteEvent
 import com.vitorpamplona.amethyst.service.model.TextNoteEvent
 
 object GlobalFeedFilter: FeedFilter<Note>() {
-  lateinit var account: Account
+//  lateinit var account: Account
 
   override fun feed() = LocalCache.notes.values
     .filter {

@@ -8,7 +8,7 @@ import com.vitorpamplona.amethyst.service.model.RepostEvent
 import com.vitorpamplona.amethyst.service.model.TextNoteEvent
 
 object HomeNewThreadFeedFilter: FeedFilter<Note>() {
-  lateinit var account: Account
+//  lateinit var account: Account
 
   override fun feed(): List<Note> {
     val user = account.userProfile()

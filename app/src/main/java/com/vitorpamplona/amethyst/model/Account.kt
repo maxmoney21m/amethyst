@@ -292,8 +292,8 @@ class Account(
       addresses = addresses,
       privateKey = loggedIn.privKey!!
     )
-    Client.send(signedEvent)
-    LocalCache.consume(signedEvent)
+//    Client.send(signedEvent)
+//    LocalCache.consume(signedEvent)
   }
 
   fun sendChannelMessage(message: String, toChannel: String, replyingTo: Note? = null, mentions: List<User>?) {

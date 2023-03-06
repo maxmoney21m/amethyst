@@ -33,6 +33,7 @@ class TextNoteEvent(
                 tags.add(listOf("a", it.toTag()))
             }
             val id = generateId(pubKey, createdAt, kind, tags, msg)
+            generateIdWithPow(pubKey, createdAt, kind, tags, msg, 20)
             val sig = Utils.sign(id, privateKey)
             return TextNoteEvent(id.toHexKey(), pubKey, createdAt, tags, msg, sig.toHexKey())
         }

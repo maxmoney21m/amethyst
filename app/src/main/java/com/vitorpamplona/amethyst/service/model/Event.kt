@@ -1,5 +1,11 @@
 package com.vitorpamplona.amethyst.service.model
 
+import androidx.lifecycle.LiveData
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequest
+import androidx.work.OutOfQuotaPolicy
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
@@ -11,10 +17,14 @@ import com.google.gson.JsonPrimitive
 import com.google.gson.JsonSerializationContext
 import com.google.gson.JsonSerializer
 import com.google.gson.annotations.SerializedName
+import com.vitorpamplona.amethyst.Amethyst
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.toHexKey
+import com.vitorpamplona.amethyst.service.pow.PowWorker
 import fr.acinq.secp256k1.Hex
 import fr.acinq.secp256k1.Secp256k1
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.lang.reflect.Type
 import java.security.MessageDigest
 import java.util.Date
@@ -26,7 +36,7 @@ open class Event(
     @SerializedName("pubkey") val pubKey: HexKey,
     @SerializedName("created_at") val createdAt: Long,
     val kind: Int,
-    val tags: List<List<String>>,
+    var tags: List<List<String>>,
     val content: String,
     val sig: HexKey
 ) {
@@ -145,6 +155,8 @@ open class Event(
     }
 
     companion object {
+        private val miner: WorkManager = WorkManager.getInstance(Amethyst.instance)
+
         private val secp256k1 = Secp256k1.get()
 
         val sha256: MessageDigest = MessageDigest.getInstance("SHA-256")
@@ -156,20 +168,62 @@ open class Event(
             .registerTypeAdapter(ByteArray::class.java, ByteArrayDeserializer())
             .create()
 
-        fun fromJson(json: String, lenient: Boolean = false): Event = gson.fromJson(json, Event::class.java).getRefinedEvent(lenient)
+        fun fromJson(json: String, lenient: Boolean = false): Event =
+            gson.fromJson(json, Event::class.java).getRefinedEvent(lenient)
 
-        fun fromJson(json: JsonElement, lenient: Boolean = false): Event = gson.fromJson(json, Event::class.java).getRefinedEvent(lenient)
+        fun fromJson(json: JsonElement, lenient: Boolean = false): Event =
+            gson.fromJson(json, Event::class.java).getRefinedEvent(lenient)
 
         fun Event.getRefinedEvent(lenient: Boolean = false): Event = when (kind) {
             BadgeAwardEvent.kind -> BadgeAwardEvent(id, pubKey, createdAt, tags, content, sig)
-            BadgeDefinitionEvent.kind -> BadgeDefinitionEvent(id, pubKey, createdAt, tags, content, sig)
+            BadgeDefinitionEvent.kind -> BadgeDefinitionEvent(
+                id,
+                pubKey,
+                createdAt,
+                tags,
+                content,
+                sig
+            )
+
             BadgeProfilesEvent.kind -> BadgeProfilesEvent(id, pubKey, createdAt, tags, content, sig)
 
             ChannelCreateEvent.kind -> ChannelCreateEvent(id, pubKey, createdAt, tags, content, sig)
-            ChannelHideMessageEvent.kind -> ChannelHideMessageEvent(id, pubKey, createdAt, tags, content, sig)
-            ChannelMessageEvent.kind -> ChannelMessageEvent(id, pubKey, createdAt, tags, content, sig)
-            ChannelMetadataEvent.kind -> ChannelMetadataEvent(id, pubKey, createdAt, tags, content, sig)
-            ChannelMuteUserEvent.kind -> ChannelMuteUserEvent(id, pubKey, createdAt, tags, content, sig)
+            ChannelHideMessageEvent.kind -> ChannelHideMessageEvent(
+                id,
+                pubKey,
+                createdAt,
+                tags,
+                content,
+                sig
+            )
+
+            ChannelMessageEvent.kind -> ChannelMessageEvent(
+                id,
+                pubKey,
+                createdAt,
+                tags,
+                content,
+                sig
+            )
+
+            ChannelMetadataEvent.kind -> ChannelMetadataEvent(
+                id,
+                pubKey,
+                createdAt,
+                tags,
+                content,
+                sig
+            )
+
+            ChannelMuteUserEvent.kind -> ChannelMuteUserEvent(
+                id,
+                pubKey,
+                createdAt,
+                tags,
+                content,
+                sig
+            )
+
             ContactListEvent.kind -> ContactListEvent(id, pubKey, createdAt, tags, content, sig)
             DeletionEvent.kind -> DeletionEvent(id, pubKey, createdAt, tags, content, sig)
 
@@ -179,14 +233,29 @@ open class Event(
             MetadataEvent.kind -> MetadataEvent(id, pubKey, createdAt, tags, content, sig)
             PrivateDmEvent.kind -> PrivateDmEvent(id, pubKey, createdAt, tags, content, sig)
             ReactionEvent.kind -> ReactionEvent(id, pubKey, createdAt, tags, content, sig)
-            RecommendRelayEvent.kind -> RecommendRelayEvent(id, pubKey, createdAt, tags, content, sig, lenient)
+            RecommendRelayEvent.kind -> RecommendRelayEvent(
+                id,
+                pubKey,
+                createdAt,
+                tags,
+                content,
+                sig,
+                lenient
+            )
+
             ReportEvent.kind -> ReportEvent(id, pubKey, createdAt, tags, content, sig)
             RepostEvent.kind -> RepostEvent(id, pubKey, createdAt, tags, content, sig)
             TextNoteEvent.kind -> TextNoteEvent(id, pubKey, createdAt, tags, content, sig)
             else -> this
         }
 
-        fun generateId(pubKey: HexKey, createdAt: Long, kind: Int, tags: List<List<String>>, content: String): ByteArray {
+        fun generateId(
+            pubKey: HexKey,
+            createdAt: Long,
+            kind: Int,
+            tags: List<List<String>>,
+            content: String,
+        ): ByteArray {
             val rawEvent = listOf(
                 0,
                 pubKey,
@@ -199,7 +268,44 @@ open class Event(
             return sha256.digest(rawEventJson.toByteArray())
         }
 
-        fun create(privateKey: ByteArray, kind: Int, tags: List<List<String>> = emptyList(), content: String = "", createdAt: Long = Date().time / 1000): Event {
+        fun generateIdWithPow(
+            pubKey: HexKey,
+            createdAt: Long,
+            kind: Int,
+            tags: List<List<String>>,
+            content: String,
+            work: Int = 0,
+        ) {
+            val event = Event(
+                id = HexKey(),
+                pubKey = pubKey,
+                createdAt = createdAt,
+                kind = kind,
+                tags = tags,
+                content = content,
+                sig = HexKey(),
+            )
+            val eventJson = event.toJson()
+
+            val inputData = Data.Builder()
+                .putInt("WORK_TARGET", work)
+                .putString("RAW_EVENT", eventJson)
+                .build()
+            val request = OneTimeWorkRequest.Builder(PowWorker::class.java)
+                .addTag("POW_OUTPUT")
+                .setInputData(inputData)
+                .build()
+
+            miner.enqueue(request)
+        }
+
+        fun create(
+            privateKey: ByteArray,
+            kind: Int,
+            tags: List<List<String>> = emptyList(),
+            content: String = "",
+            createdAt: Long = Date().time / 1000
+        ): Event {
             val pubKey = Utils.pubkeyCreate(privateKey).toHexKey()
             val id = Companion.generateId(pubKey, createdAt, kind, tags, content)
             val sig = Utils.sign(id, privateKey).toHexKey()

@@ -116,7 +116,7 @@ private fun FeedLoaded(
                         "Room/${userToComposeOn.pubkeyHex}"
                     }
 
-                    notificationCache.cache.markAsRead(route, it.createdAt())
+                    notificationCache.cache.markAsRead(route, it.createdAt)
                 }
             }
             markAsRead.value = false

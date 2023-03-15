@@ -2,17 +2,23 @@ package com.vitorpamplona.amethyst.service.model
 
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.toHexKey
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import nostr.postr.Utils
 import java.util.Date
 
+@Serializable
 class TextNoteEvent(
-    id: HexKey,
-    pubKey: HexKey,
-    createdAt: Long,
-    tags: List<List<String>>,
-    content: String,
-    sig: HexKey
-) : BaseTextNoteEvent(id, pubKey, createdAt, kind, tags, content, sig) {
+    override val id: HexKey,
+    @SerialName("pubkey")
+    override val pubKey: HexKey,
+    @SerialName("created_at")
+    override val createdAt: Long,
+    override val tags: List<List<String>>,
+    override val content: String,
+    override val sig: HexKey
+) : BaseTextNoteEvent() {
+    override val kind: Int = TextNoteEvent.kind
 
     companion object {
         const val kind = 1

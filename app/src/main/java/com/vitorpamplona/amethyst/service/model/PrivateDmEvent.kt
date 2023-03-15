@@ -4,18 +4,25 @@ import android.util.Log
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.toHexKey
 import fr.acinq.secp256k1.Hex
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import nostr.postr.Utils
 import nostr.postr.toHex
 import java.util.Date
 
+@Serializable
 class PrivateDmEvent(
-    id: HexKey,
-    pubKey: HexKey,
-    createdAt: Long,
-    tags: List<List<String>>,
-    content: String,
-    sig: HexKey
-) : Event(id, pubKey, createdAt, kind, tags, content, sig) {
+    override val id: HexKey,
+    @SerialName("pubkey")
+    override val pubKey: HexKey,
+    @SerialName("created_at")
+    override val createdAt: Long,
+    override val tags: List<List<String>>,
+    override val content: String,
+    override val sig: HexKey
+) : Event() {
+    override val kind: Int = PrivateDmEvent.kind
+
     /**
      * This may or may not be the actual recipient's pub key. The event is intended to look like a
      * nip-04 EncryptedDmEvent but may omit the recipient, too. This value can be queried and used

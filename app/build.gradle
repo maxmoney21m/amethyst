@@ -125,7 +125,6 @@ dependencies {
 
     // Json Serialization TODO: We might need to converge between gson and Jackson (we are usin both)
     implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.14.2'
-    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
 
     // link preview
     implementation 'tw.com.oneup.www:Baha-UrlPreview:1.0.1'

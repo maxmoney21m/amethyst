@@ -310,7 +310,7 @@ class Account(
         val mentionsHex = mentions?.map { it.pubkeyHex }
 
         val signedEvent = ChannelMessageEvent.create(
-            message = message,
+            content = message,
             channel = toChannel,
             replyTos = repliesToHex,
             mentions = mentionsHex,
@@ -427,7 +427,7 @@ class Account(
 
             event.plainContent(loggedIn.privKey!!, pubkeyToUse.toByteArray())
         } else {
-            event?.content()
+            event?.content
         }
     }
 

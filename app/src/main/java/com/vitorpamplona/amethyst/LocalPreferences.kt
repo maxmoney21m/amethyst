@@ -8,7 +8,6 @@ import com.vitorpamplona.amethyst.model.RelaySetupInfo
 import com.vitorpamplona.amethyst.model.toByteArray
 import com.vitorpamplona.amethyst.service.model.ContactListEvent
 import com.vitorpamplona.amethyst.service.model.Event
-import com.vitorpamplona.amethyst.service.model.Event.Companion.getRefinedEvent
 import fr.acinq.secp256k1.Hex
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -182,7 +181,9 @@ object LocalPreferences {
             putString(PrefKeys.LANGUAGE_PREFS, Json.encodeToString(account.languagePreferences))
             putString(PrefKeys.TRANSLATE_TO, account.translateTo)
             putString(PrefKeys.ZAP_AMOUNTS, Json.encodeToString(account.zapAmountChoices))
-            putString(PrefKeys.LATEST_CONTACT_LIST, Event.gson.toJson(account.backupContactList))
+            account.backupContactList?.let {
+                putString(PrefKeys.LATEST_CONTACT_LIST, Json.encodeToString(ContactListEvent.serializer(), it))
+            }
             putBoolean(PrefKeys.HIDE_DELETE_REQUEST_DIALOG, account.hideDeleteRequestDialog)
             putBoolean(PrefKeys.HIDE_BLOCK_ALERT_DIALOG, account.hideBlockAlertDialog)
             putString(PrefKeys.DISPLAY_NAME, account.userProfile().toBestDisplayName())
@@ -207,15 +208,14 @@ object LocalPreferences {
                 getString(PrefKeys.ZAP_AMOUNTS, "[]") ?: "[500, 1000, 5000]"
             )
 
-            val latestContactList = try {
+            val latestContactList: ContactListEvent? = try {
                 getString(PrefKeys.LATEST_CONTACT_LIST, null)?.let {
-                    Event.gson.fromJson(it, Event::class.java)
-                        .getRefinedEvent(true) as ContactListEvent
+                    Event.fromJson(it)
                 }
             } catch (e: Throwable) {
                 e.printStackTrace()
                 null
-            }
+            } as ContactListEvent?
 
             val languagePreferences = try {
                 getString(PrefKeys.LANGUAGE_PREFS, null)?.let {

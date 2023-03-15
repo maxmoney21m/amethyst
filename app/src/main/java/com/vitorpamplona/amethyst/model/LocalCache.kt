@@ -208,7 +208,7 @@ object LocalCache {
         }
 
         // Already processed this event.
-        if (note.event?.id() == event.id()) return
+        if (note.event?.id == event.id) return
 
         if (antiSpam.isSpam(event)) {
             relay?.let {
@@ -233,7 +233,7 @@ object LocalCache {
         val author = getOrCreateUser(event.pubKey)
 
         // Already processed this event.
-        if (note.event?.id() == event.id()) return
+        if (note.event?.id == event.id) return
 
         if (event.createdAt > (note.createdAt() ?: 0)) {
             note.loadEvent(event, author, emptyList<Note>())
@@ -247,7 +247,7 @@ object LocalCache {
         val author = getOrCreateUser(event.pubKey)
 
         // Already processed this event.
-        if (note.event?.id() == event.id()) return
+        if (note.event?.id == event.id) return
 
         val replyTo = event.badgeAwardEvents().mapNotNull { checkGetOrCreateNote(it) } +
             event.badgeAwardDefinitions().mapNotNull { getOrCreateAddressableNote(it) }
@@ -338,7 +338,7 @@ object LocalCache {
                 deleteNote.author?.removeNote(deleteNote)
 
                 // reverts the add
-                val mentions = deleteNote.event?.tags()?.filter { it.firstOrNull() == "p" }
+                val mentions = deleteNote.event?.tags?.filter { it.firstOrNull() == "p" }
                     ?.mapNotNull { it.getOrNull(1) }?.mapNotNull { checkGetOrCreateUser(it) }
 
                 mentions?.forEach { user ->
@@ -618,8 +618,8 @@ object LocalCache {
 
     fun findNotesStartingWith(text: String): List<Note> {
         return notes.values.filter {
-            (it.event is TextNoteEvent && it.event?.content()?.contains(text, true) ?: false) ||
-                (it.event is ChannelMessageEvent && it.event?.content()?.contains(text, true) ?: false) ||
+            (it.event is TextNoteEvent && it.event?.content?.contains(text, true) ?: false) ||
+                (it.event is ChannelMessageEvent && it.event?.content?.contains(text, true) ?: false) ||
                 it.idHex.startsWith(text, true) ||
                 it.idNote().startsWith(text, true)
         } + addressables.values.filter {
@@ -658,7 +658,7 @@ object LocalCache {
 
                 // reverts the add
                 val mentions =
-                    it.event?.tags()?.filter { it.firstOrNull() == "p" }?.mapNotNull { it.getOrNull(1) }
+                    it.event?.tags?.filter { it.firstOrNull() == "p" }?.mapNotNull { it.getOrNull(1) }
                         ?.mapNotNull { checkGetOrCreateUser(it) }
 
                 // Counts the replies

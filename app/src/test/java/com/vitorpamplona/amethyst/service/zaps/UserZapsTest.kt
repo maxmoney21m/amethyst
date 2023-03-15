@@ -2,7 +2,7 @@ package com.vitorpamplona.amethyst.service.zaps
 
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.Note
-import com.vitorpamplona.amethyst.service.model.LnZapEventInterface
+import com.vitorpamplona.amethyst.service.model.LnZapEvent
 import com.vitorpamplona.amethyst.service.model.zaps.UserZaps
 import io.mockk.every
 import io.mockk.mockk
@@ -38,14 +38,14 @@ class UserZapsTest {
         Assert.assertEquals(zapRequest, actual.first().first)
         Assert.assertEquals(
             BigDecimal(200),
-            (actual.first().second.event as LnZapEventInterface).amount()
+            (actual.first().second.event as LnZapEvent).amount()
         )
     }
 
     private fun mockZapNoteWith(pubkey: HexKey, amount: Int): Note {
-        val lnZapEvent = mockk<LnZapEventInterface>()
+        val lnZapEvent = mockk<LnZapEvent>()
         every { lnZapEvent.amount() } returns amount.toBigDecimal()
-        every { lnZapEvent.pubKey() } returns pubkey
+        every { lnZapEvent.pubKey } returns pubkey
 
         val zapNote = mockk<Note>()
         every { zapNote.event } returns lnZapEvent

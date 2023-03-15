@@ -4,16 +4,22 @@ import android.util.Log
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.service.lnurl.LnInvoiceUtil
 import com.vitorpamplona.amethyst.service.relays.Client
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 
+@Serializable
 class LnZapEvent(
-    id: HexKey,
-    pubKey: HexKey,
-    createdAt: Long,
-    tags: List<List<String>>,
-    content: String,
-    sig: HexKey
-) : LnZapEventInterface, Event(id, pubKey, createdAt, kind, tags, content, sig) {
+    override val id: HexKey,
+    @SerialName("pubkey")
+    override val pubKey: HexKey,
+    @SerialName("created_at")
+    override val createdAt: Long,
+    override val tags: List<List<String>>,
+    override val content: String,
+    override val sig: HexKey
+) : LnZapEventInterface() {
+    override val kind: Int = LnZapEvent.kind
 
     override fun zappedPost() = tags
         .filter { it.firstOrNull() == "e" }

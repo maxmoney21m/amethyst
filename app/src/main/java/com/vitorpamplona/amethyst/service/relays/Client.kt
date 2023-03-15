@@ -1,7 +1,6 @@
 package com.vitorpamplona.amethyst.service.relays
 
 import com.vitorpamplona.amethyst.service.model.Event
-import com.vitorpamplona.amethyst.service.model.EventInterface
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -64,7 +63,7 @@ object Client : RelayPool.Listener {
         RelayPool.sendFilterOnlyIfDisconnected()
     }
 
-    fun send(signedEvent: EventInterface) {
+    fun send(signedEvent: Event) {
         RelayPool.send(signedEvent)
     }
 

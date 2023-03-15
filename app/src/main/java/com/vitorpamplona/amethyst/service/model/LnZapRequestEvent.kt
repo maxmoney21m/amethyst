@@ -2,19 +2,28 @@ package com.vitorpamplona.amethyst.service.model
 
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.toHexKey
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import nostr.postr.Utils
 import java.util.Date
 
+@Serializable
 class LnZapRequestEvent(
-    id: HexKey,
-    pubKey: HexKey,
-    createdAt: Long,
-    tags: List<List<String>>,
-    content: String,
-    sig: HexKey
-) : Event(id, pubKey, createdAt, kind, tags, content, sig) {
+    override val id: HexKey,
+    @SerialName("pubkey")
+    override val pubKey: HexKey,
+    @SerialName("created_at")
+    override val createdAt: Long,
+    override val tags: List<List<String>>,
+    override val content: String,
+    override val sig: HexKey
+) : Event() {
+    override val kind: Int = LnZapRequestEvent.kind
+
     fun zappedPost() = tags.filter { it.firstOrNull() == "e" }.mapNotNull { it.getOrNull(1) }
+
     fun zappedAuthor() = tags.filter { it.firstOrNull() == "p" }.mapNotNull { it.getOrNull(1) }
+
     fun taggedAddresses() = tags.filter { it.firstOrNull() == "a" }.mapNotNull {
         val aTagValue = it.getOrNull(1)
         val relay = it.getOrNull(2)
@@ -26,7 +35,7 @@ class LnZapRequestEvent(
         const val kind = 9734
 
         fun create(
-            originalNote: EventInterface,
+            originalNote: Event,
             relays: Set<String>,
             privateKey: ByteArray,
             createdAt: Long = Date().time / 1000
@@ -34,8 +43,8 @@ class LnZapRequestEvent(
             val content = ""
             val pubKey = Utils.pubkeyCreate(privateKey).toHexKey()
             var tags = listOf(
-                listOf("e", originalNote.id()),
-                listOf("p", originalNote.pubKey()),
+                listOf("e", originalNote.id),
+                listOf("p", originalNote.pubKey),
                 listOf("relays") + relays
             )
             if (originalNote is LongTextNoteEvent) {

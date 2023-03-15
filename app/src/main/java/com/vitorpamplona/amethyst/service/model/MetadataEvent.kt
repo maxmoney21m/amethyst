@@ -1,13 +1,16 @@
 package com.vitorpamplona.amethyst.service.model
 
 import android.util.Log
-import com.google.gson.Gson
 import com.vitorpamplona.amethyst.R
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.toHexKey
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import nostr.postr.Utils
 import java.util.Date
 
+@Serializable
 data class ContactMetaData(
     val name: String,
     val picture: String,
@@ -134,16 +137,21 @@ class MastodonIdentity(
     }
 }
 
+@Serializable
 class MetadataEvent(
-    id: HexKey,
-    pubKey: HexKey,
-    createdAt: Long,
-    tags: List<List<String>>,
-    content: String,
-    sig: HexKey
-) : Event(id, pubKey, createdAt, kind, tags, content, sig) {
+    override val id: HexKey,
+    @SerialName("pubkey")
+    override val pubKey: HexKey,
+    @SerialName("created_at")
+    override val createdAt: Long,
+    override val tags: List<List<String>>,
+    override val content: String,
+    override val sig: HexKey
+) : Event() {
+    override val kind: Int = MetadataEvent.kind
+
     fun contactMetaData() = try {
-        gson.fromJson(content, ContactMetaData::class.java)
+        Json.decodeFromString(ContactMetaData.serializer(), content)
     } catch (e: Exception) {
         Log.e("MetadataEvent", "Can't parse $content", e)
         null
@@ -160,10 +168,9 @@ class MetadataEvent(
 
     companion object {
         const val kind = 0
-        val gson = Gson()
 
         fun create(contactMetaData: ContactMetaData, identities: List<IdentityClaim>, privateKey: ByteArray, createdAt: Long = Date().time / 1000): MetadataEvent {
-            return create(gson.toJson(contactMetaData), identities, privateKey, createdAt = createdAt)
+            return create(Json.encodeToString(ContactMetaData.serializer(), contactMetaData), identities, privateKey, createdAt = createdAt)
         }
 
         fun create(contactMetaData: String, identities: List<IdentityClaim>, privateKey: ByteArray, createdAt: Long = Date().time / 1000): MetadataEvent {

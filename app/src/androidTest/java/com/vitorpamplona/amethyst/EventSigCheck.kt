@@ -1,9 +1,10 @@
 package com.vitorpamplona.amethyst
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.gson.JsonElement
 import com.vitorpamplona.amethyst.service.model.Event
 import com.vitorpamplona.amethyst.service.relays.Client
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -14,7 +15,7 @@ class EventSigCheck {
 
     @Test
     fun testUnicode2028and2029ShouldNotBeEscaped() {
-        val msg = Event.gson.fromJson(payload1, JsonElement::class.java).asJsonArray
+        val msg = Json.decodeFromString(JsonArray.serializer(), payload1)
         val event = Event.fromJson(msg[2], Client.lenient)
 
         // Should pass

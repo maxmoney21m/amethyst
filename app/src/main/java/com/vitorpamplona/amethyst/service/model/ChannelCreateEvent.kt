@@ -3,19 +3,27 @@ package com.vitorpamplona.amethyst.service.model
 import android.util.Log
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.toHexKey
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import nostr.postr.Utils
 import java.util.Date
 
+@Serializable
 class ChannelCreateEvent(
-    id: HexKey,
-    pubKey: HexKey,
-    createdAt: Long,
-    tags: List<List<String>>,
-    content: String,
-    sig: HexKey
-) : Event(id, pubKey, createdAt, kind, tags, content, sig) {
+    override val id: HexKey,
+    @SerialName("pubkey")
+    override val pubKey: HexKey,
+    @SerialName("created_at")
+    override val createdAt: Long,
+    override val tags: List<List<String>>,
+    override val content: String,
+    override val sig: HexKey
+) : Event() {
+    override val kind = ChannelCreateEvent.kind
+
     fun channelInfo(): ChannelData = try {
-        MetadataEvent.gson.fromJson(content, ChannelData::class.java)
+        Json.decodeFromString(ChannelData.serializer(), content)
     } catch (e: Exception) {
         Log.e("ChannelMetadataEvent", "Can't parse channel info $content", e)
         ChannelData(null, null, null)
@@ -27,7 +35,7 @@ class ChannelCreateEvent(
         fun create(channelInfo: ChannelData?, privateKey: ByteArray, createdAt: Long = Date().time / 1000): ChannelCreateEvent {
             val content = try {
                 if (channelInfo != null) {
-                    gson.toJson(channelInfo)
+                    Json.encodeToString(ChannelData.serializer(), channelInfo)
                 } else {
                     ""
                 }
@@ -44,5 +52,6 @@ class ChannelCreateEvent(
         }
     }
 
+    @Serializable
     data class ChannelData(var name: String?, var about: String?, var picture: String?)
 }

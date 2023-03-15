@@ -435,7 +435,7 @@ fun NoteCompose(
                             ),
                             canPreview = !makeItShort,
                             Modifier.fillMaxWidth(),
-                            noteEvent.tags(),
+                            noteEvent.tags,
                             backgroundColor,
                             accountViewModel,
                             navController
@@ -461,7 +461,7 @@ fun NoteCompose(
                                 eventContent,
                                 canPreview = canPreview && !makeItShort,
                                 Modifier.fillMaxWidth(),
-                                noteEvent.tags(),
+                                noteEvent.tags,
                                 backgroundColor,
                                 accountViewModel,
                                 navController

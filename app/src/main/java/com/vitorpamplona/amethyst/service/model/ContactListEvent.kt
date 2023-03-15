@@ -1,23 +1,32 @@
 package com.vitorpamplona.amethyst.service.model
 
 import android.util.Log
-import com.google.gson.reflect.TypeToken
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.decodePublicKey
 import com.vitorpamplona.amethyst.model.toHexKey
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 import nostr.postr.Utils
 import java.util.Date
 
 data class Contact(val pubKeyHex: String, val relayUri: String?)
 
+@Serializable
 class ContactListEvent(
-    id: HexKey,
-    pubKey: HexKey,
-    createdAt: Long,
-    tags: List<List<String>>,
-    content: String,
-    sig: HexKey
-) : Event(id, pubKey, createdAt, kind, tags, content, sig) {
+    override val id: HexKey,
+    @SerialName("pubkey")
+    override val pubKey: HexKey,
+    @SerialName("created_at")
+    override val createdAt: Long,
+    override val tags: List<List<String>>,
+    override val content: String,
+    override val sig: HexKey
+) : Event() {
+    override val kind: Int = ContactListEvent.kind
+
     // This function is only used by the user logged in
     // But it is used all the time.
     val verifiedFollowKeySet: Set<HexKey> by lazy {
@@ -50,7 +59,7 @@ class ContactListEvent(
 
     fun relays(): Map<String, ReadWrite>? = try {
         if (content.isNotEmpty()) {
-            gson.fromJson(content, object : TypeToken<Map<String, ReadWrite>>() {}.type) as Map<String, ReadWrite>
+            Json.decodeFromString(MapSerializer(String.serializer(), ReadWrite.serializer()), content)
         } else {
             null
         }
@@ -64,7 +73,7 @@ class ContactListEvent(
 
         fun create(follows: List<Contact>, relayUse: Map<String, ReadWrite>?, privateKey: ByteArray, createdAt: Long = Date().time / 1000): ContactListEvent {
             val content = if (relayUse != null) {
-                gson.toJson(relayUse)
+                Json.encodeToString(MapSerializer(String.serializer(), ReadWrite.serializer()), relayUse)
             } else {
                 ""
             }
@@ -82,5 +91,6 @@ class ContactListEvent(
         }
     }
 
+    @Serializable
     data class ReadWrite(val read: Boolean, val write: Boolean)
 }

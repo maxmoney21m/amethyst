@@ -1,10 +1,11 @@
 package com.vitorpamplona.amethyst.service.relays
 
 import android.util.Log
-import com.google.gson.JsonElement
 import com.vitorpamplona.amethyst.service.model.Event
-import com.vitorpamplona.amethyst.service.model.EventInterface
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -77,9 +78,9 @@ class Relay(
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
                     try {
-                        val msg = Event.gson.fromJson(text, JsonElement::class.java).asJsonArray
-                        val type = msg[0].asString
-                        val channel = msg[1].asString
+                        val msg = Json.decodeFromString(JsonArray.serializer(), text)
+                        val type = Json.decodeFromJsonElement(String.serializer(), msg[0])
+                        val channel = Json.decodeFromJsonElement(String.serializer(), msg[1])
                         when (type) {
                             "EVENT" -> {
                                 // Log.w("Relay", "Relay onEVENT $url, $channel")
@@ -98,7 +99,12 @@ class Relay(
                             }
                             "OK" -> listeners.forEach {
                                 // Log.w("Relay", "Relay onOK $url, $channel")
-                                it.onSendResponse(this@Relay, msg[1].asString, msg[2].asBoolean, msg[3].asString)
+                                it.onSendResponse(
+                                    this@Relay,
+                                    Json.decodeFromJsonElement(String.serializer(), msg[1]),
+                                    Json.decodeFromJsonElement(Boolean.serializer(), msg[2]),
+                                    Json.decodeFromJsonElement(String.serializer(), msg[3])
+                                )
                             }
                             else -> listeners.forEach {
                                 // Log.w("Relay", "Relay something else $url, $channel")
@@ -201,7 +207,7 @@ class Relay(
         }
     }
 
-    fun send(signedEvent: EventInterface) {
+    fun send(signedEvent: Event) {
         if (write) {
             socket?.send("""["EVENT",${signedEvent.toJson()}]""")
             eventUploadCounter++

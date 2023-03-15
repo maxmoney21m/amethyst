@@ -1,54 +1,84 @@
 package com.vitorpamplona.amethyst.service.model
 
-import com.google.gson.*
-import com.google.gson.annotations.SerializedName
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.toHexKey
 import fr.acinq.secp256k1.Hex
 import fr.acinq.secp256k1.Secp256k1
-import nostr.postr.Utils
-import nostr.postr.toHex
-import java.lang.reflect.Type
+import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonContentPolymorphicSerializer
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.addJsonArray
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.jsonObject
 import java.security.MessageDigest
-import java.util.*
 
-open class Event(
-    val id: HexKey,
-    @SerializedName("pubkey") val pubKey: HexKey,
-    @SerializedName("created_at") val createdAt: Long,
-    val kind: Int,
-    val tags: List<List<String>>,
-    val content: String,
-    val sig: HexKey
-) : EventInterface {
-    override fun id(): HexKey = id
+object EventSerializer : JsonContentPolymorphicSerializer<Event>(Event::class) {
+    override fun selectDeserializer(element: JsonElement): DeserializationStrategy<out Event> {
+        if ("kind" in element.jsonObject) {
+            val serializer = when (Json.decodeFromJsonElement(Int.serializer(), element.jsonObject["kind"]!!)) {
+                BadgeAwardEvent.kind -> BadgeAwardEvent.serializer()
+                BadgeDefinitionEvent.kind -> BadgeDefinitionEvent.serializer()
+                BadgeProfilesEvent.kind -> BadgeProfilesEvent.serializer()
+                ChannelCreateEvent.kind -> ChannelCreateEvent.serializer()
+                ChannelHideMessageEvent.kind -> ChannelHideMessageEvent.serializer()
+                ChannelMessageEvent.kind -> ChannelMessageEvent.serializer()
+                ChannelMetadataEvent.kind -> ChannelMetadataEvent.serializer()
+                ChannelMuteUserEvent.kind -> ChannelMuteUserEvent.serializer()
+                ContactListEvent.kind -> ContactListEvent.serializer()
+                DeletionEvent.kind -> DeletionEvent.serializer()
+                LnZapEvent.kind -> LnZapEvent.serializer()
+                LnZapRequestEvent.kind -> LnZapRequestEvent.serializer()
+                LongTextNoteEvent.kind -> LongTextNoteEvent.serializer()
+                MetadataEvent.kind -> MetadataEvent.serializer()
+                PrivateDmEvent.kind -> PrivateDmEvent.serializer()
+                ReactionEvent.kind -> ReactionEvent.serializer()
+                RecommendRelayEvent.kind -> RecommendRelayEvent.serializer()
+                ReportEvent.kind -> ReportEvent.serializer()
+                RepostEvent.kind -> RepostEvent.serializer()
+                TextNoteEvent.kind -> TextNoteEvent.serializer()
+                else -> Event.serializer()
+            }
+            return serializer
+        }
+        return Event.serializer()
+    }
+}
 
-    override fun pubKey(): HexKey = pubKey
+@Serializable(with = EventSerializer::class)
+sealed class Event {
+    abstract val id: HexKey
 
-    override fun createdAt(): Long = createdAt
+    @SerialName("pubkey")
+    abstract val pubKey: HexKey
 
-    override fun kind(): Int = kind
+    @SerialName("created_at")
+    abstract val createdAt: Long
+    abstract val kind: Int
+    abstract val tags: List<List<String>>
+    abstract val content: String
+    abstract val sig: HexKey
 
-    override fun tags(): List<List<String>> = tags
-
-    override fun content(): String = content
-
-    override fun sig(): HexKey = sig
-
-    override fun toJson(): String = gson.toJson(this)
+//    override fun toJson(): String = gson.toJson(this)
+    fun toJson(): String = Json.encodeToString(Event.serializer(), this)
 
     fun taggedUsers() = tags.filter { it.firstOrNull() == "p" }.mapNotNull { it.getOrNull(1) }
 
-    override fun isTaggedUser(idHex: String) = tags.any { it.getOrNull(0) == "p" && it.getOrNull(1) == idHex }
+    fun isTaggedUser(idHex: String) = tags.any { it.getOrNull(0) == "p" && it.getOrNull(1) == idHex }
 
     /**
      * Checks if the ID is correct and then if the pubKey's secret key signed the event.
      */
-    override fun checkSignature() {
+    fun checkSignature() {
         if (!id.contentEquals(generateId())) {
             throw Exception(
                 """|Unexpected ID.
-                   |  Event: ${toJson()}
+                   |  Event: ${Json.encodeToString(Event.serializer(), this)}
                    |  Actual ID: $id
                    |  Generated: ${generateId()}
                 """.trimIndent()
@@ -59,7 +89,7 @@ open class Event(
         }
     }
 
-    override fun hasValidSignature(): Boolean {
+    fun hasValidSignature(): Boolean {
         if (!id.contentEquals(generateId())) {
             return false
         }
@@ -68,147 +98,59 @@ open class Event(
     }
 
     private fun generateId(): String {
-        val rawEvent = listOf(0, pubKey, createdAt, kind, tags, content)
+        val jsonString = rawJsonStringForId(pubKey, createdAt, kind, tags, content)
 
         // GSON decided to hardcode these replacements.
         // They break Nostr's hash check.
         // These lines revert their code.
         // https://github.com/google/gson/issues/2295
-        val rawEventJson = gson.toJson(rawEvent)
-            .replace("\\u2028", "\u2028")
-            .replace("\\u2029", "\u2029")
+//        val rawEventJson = gson.toJson(rawEvent)
+//            .replace("\\u2028", "\u2028")
+//            .replace("\\u2029", "\u2029")
 
-        return sha256.digest(rawEventJson.toByteArray()).toHexKey()
-    }
-
-    private class EventDeserializer : JsonDeserializer<Event> {
-        override fun deserialize(
-            json: JsonElement,
-            typeOfT: Type?,
-            context: JsonDeserializationContext?
-        ): Event {
-            val jsonObject = json.asJsonObject
-            return Event(
-                id = jsonObject.get("id").asString,
-                pubKey = jsonObject.get("pubkey").asString,
-                createdAt = jsonObject.get("created_at").asLong,
-                kind = jsonObject.get("kind").asInt,
-                tags = jsonObject.get("tags").asJsonArray.map {
-                    it.asJsonArray.mapNotNull { s -> if (s.isJsonNull) null else s.asString }
-                },
-                content = jsonObject.get("content").asString,
-                sig = jsonObject.get("sig").asString
-            )
-        }
-    }
-
-    private class EventSerializer : JsonSerializer<Event> {
-        override fun serialize(
-            src: Event,
-            typeOfSrc: Type?,
-            context: JsonSerializationContext?
-        ): JsonElement {
-            return JsonObject().apply {
-                addProperty("id", src.id)
-                addProperty("pubkey", src.pubKey)
-                addProperty("created_at", src.createdAt)
-                addProperty("kind", src.kind)
-                add(
-                    "tags",
-                    JsonArray().also { jsonTags ->
-                        src.tags.forEach { tag ->
-                            jsonTags.add(
-                                JsonArray().also { jsonTagElement ->
-                                    tag.forEach { tagElement ->
-                                        jsonTagElement.add(tagElement)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                )
-                addProperty("content", src.content)
-                addProperty("sig", src.sig)
-            }
-        }
-    }
-
-    private class ByteArrayDeserializer : JsonDeserializer<ByteArray> {
-        override fun deserialize(
-            json: JsonElement,
-            typeOfT: Type?,
-            context: JsonDeserializationContext?
-        ): ByteArray = Hex.decode(json.asString)
-    }
-
-    private class ByteArraySerializer : JsonSerializer<ByteArray> {
-        override fun serialize(
-            src: ByteArray,
-            typeOfSrc: Type?,
-            context: JsonSerializationContext?
-        ) = JsonPrimitive(src.toHex())
+        return sha256.digest(jsonString.toByteArray()).toHexKey()
     }
 
     companion object {
         private val secp256k1 = Secp256k1.get()
 
         val sha256: MessageDigest = MessageDigest.getInstance("SHA-256")
-        val gson: Gson = GsonBuilder()
-            .disableHtmlEscaping()
-            .registerTypeAdapter(Event::class.java, EventSerializer())
-            .registerTypeAdapter(Event::class.java, EventDeserializer())
-            .registerTypeAdapter(ByteArray::class.java, ByteArraySerializer())
-            .registerTypeAdapter(ByteArray::class.java, ByteArrayDeserializer())
-            .create()
 
-        fun fromJson(json: String, lenient: Boolean = false): Event = gson.fromJson(json, Event::class.java).getRefinedEvent(lenient)
+        fun fromJson(json: String, lenient: Boolean = false): Event =
+            Json.decodeFromString(serializer(), json)
 
-        fun fromJson(json: JsonElement, lenient: Boolean = false): Event = gson.fromJson(json, Event::class.java).getRefinedEvent(lenient)
-
-        fun Event.getRefinedEvent(lenient: Boolean = false): Event = when (kind) {
-            BadgeAwardEvent.kind -> BadgeAwardEvent(id, pubKey, createdAt, tags, content, sig)
-            BadgeDefinitionEvent.kind -> BadgeDefinitionEvent(id, pubKey, createdAt, tags, content, sig)
-            BadgeProfilesEvent.kind -> BadgeProfilesEvent(id, pubKey, createdAt, tags, content, sig)
-
-            ChannelCreateEvent.kind -> ChannelCreateEvent(id, pubKey, createdAt, tags, content, sig)
-            ChannelHideMessageEvent.kind -> ChannelHideMessageEvent(id, pubKey, createdAt, tags, content, sig)
-            ChannelMessageEvent.kind -> ChannelMessageEvent(id, pubKey, createdAt, tags, content, sig)
-            ChannelMetadataEvent.kind -> ChannelMetadataEvent(id, pubKey, createdAt, tags, content, sig)
-            ChannelMuteUserEvent.kind -> ChannelMuteUserEvent(id, pubKey, createdAt, tags, content, sig)
-            ContactListEvent.kind -> ContactListEvent(id, pubKey, createdAt, tags, content, sig)
-            DeletionEvent.kind -> DeletionEvent(id, pubKey, createdAt, tags, content, sig)
-
-            LnZapEvent.kind -> LnZapEvent(id, pubKey, createdAt, tags, content, sig)
-            LnZapRequestEvent.kind -> LnZapRequestEvent(id, pubKey, createdAt, tags, content, sig)
-            LongTextNoteEvent.kind -> LongTextNoteEvent(id, pubKey, createdAt, tags, content, sig)
-            MetadataEvent.kind -> MetadataEvent(id, pubKey, createdAt, tags, content, sig)
-            PrivateDmEvent.kind -> PrivateDmEvent(id, pubKey, createdAt, tags, content, sig)
-            ReactionEvent.kind -> ReactionEvent(id, pubKey, createdAt, tags, content, sig)
-            RecommendRelayEvent.kind -> RecommendRelayEvent(id, pubKey, createdAt, tags, content, sig, lenient)
-            ReportEvent.kind -> ReportEvent(id, pubKey, createdAt, tags, content, sig)
-            RepostEvent.kind -> RepostEvent(id, pubKey, createdAt, tags, content, sig)
-            TextNoteEvent.kind -> TextNoteEvent(id, pubKey, createdAt, tags, content, sig)
-            else -> this
-        }
+        fun fromJson(json: JsonElement, lenient: Boolean = false): Event =
+            Json.decodeFromJsonElement(serializer(), json)
 
         fun generateId(pubKey: HexKey, createdAt: Long, kind: Int, tags: List<List<String>>, content: String): ByteArray {
-            val rawEvent = listOf(
-                0,
-                pubKey,
-                createdAt,
-                kind,
-                tags,
-                content
-            )
-            val rawEventJson = gson.toJson(rawEvent)
-            return sha256.digest(rawEventJson.toByteArray())
+            val jsonString = rawJsonStringForId(pubKey, createdAt, kind, tags, content)
+            return sha256.digest(jsonString.toByteArray())
         }
 
-        fun create(privateKey: ByteArray, kind: Int, tags: List<List<String>> = emptyList(), content: String = "", createdAt: Long = Date().time / 1000): Event {
-            val pubKey = Utils.pubkeyCreate(privateKey).toHexKey()
-            val id = Companion.generateId(pubKey, createdAt, kind, tags, content)
-            val sig = Utils.sign(id, privateKey).toHexKey()
-            return Event(id.toHexKey(), pubKey, createdAt, kind, tags, content, sig)
-        }
+        private fun rawJsonStringForId(
+            pubKey: HexKey,
+            createdAt: Long,
+            kind: Int,
+            tags: List<List<String>>,
+            content: String
+        ): String = Json.encodeToString(
+            JsonArray.serializer(),
+            buildJsonArray {
+                add(JsonPrimitive(0))
+                add(JsonPrimitive(pubKey))
+                add(JsonPrimitive(createdAt))
+                add(JsonPrimitive(kind))
+                addJsonArray {
+                    for (tag in tags) {
+                        addJsonArray {
+                            for (item in tag) {
+                                add(JsonPrimitive(item))
+                            }
+                        }
+                    }
+                }
+                add(JsonPrimitive(content))
+            }
+        )
     }
 }

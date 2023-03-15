@@ -3,17 +3,24 @@ package com.vitorpamplona.amethyst.service.model
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.toHexKey
 import com.vitorpamplona.amethyst.service.relays.Client
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import nostr.postr.Utils
 import java.util.Date
 
+@Serializable
 class RepostEvent(
-    id: HexKey,
-    pubKey: HexKey,
-    createdAt: Long,
-    tags: List<List<String>>,
-    content: String,
-    sig: HexKey
-) : Event(id, pubKey, createdAt, kind, tags, content, sig) {
+    override val id: HexKey,
+    @SerialName("pubkey")
+    override val pubKey: HexKey,
+    @SerialName("created_at")
+    override val createdAt: Long,
+    override val tags: List<List<String>>,
+    override val content: String,
+    override val sig: HexKey
+) : Event() {
+    override val kind: Int = BadgeDefinitionEvent.kind
 
     fun boostedPost() = tags.filter { it.firstOrNull() == "e" }.mapNotNull { it.getOrNull(1) }
     fun originalAuthor() = tags.filter { it.firstOrNull() == "p" }.mapNotNull { it.getOrNull(1) }
@@ -33,14 +40,14 @@ class RepostEvent(
     companion object {
         const val kind = 6
 
-        fun create(boostedPost: EventInterface, privateKey: ByteArray, createdAt: Long = Date().time / 1000): RepostEvent {
-            val content = boostedPost.toJson()
+        fun create(boostedPost: Event, privateKey: ByteArray, createdAt: Long = Date().time / 1000): RepostEvent {
+            val content = Json.encodeToString(Event.serializer(), boostedPost)
 
-            val replyToPost = listOf("e", boostedPost.id())
-            val replyToAuthor = listOf("p", boostedPost.pubKey())
+            val replyToPost = listOf("e", boostedPost.id)
+            val replyToAuthor = listOf("p", boostedPost.pubKey)
 
             val pubKey = Utils.pubkeyCreate(privateKey).toHexKey()
-            var tags: List<List<String>> = boostedPost.tags().plus(listOf(replyToPost, replyToAuthor))
+            var tags: List<List<String>> = boostedPost.tags.plus(listOf(replyToPost, replyToAuthor))
 
             if (boostedPost is LongTextNoteEvent) {
                 tags = tags + listOf(listOf("a", boostedPost.address().toTag()))

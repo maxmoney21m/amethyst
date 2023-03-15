@@ -1,21 +1,22 @@
 package com.vitorpamplona.amethyst.service.model
 
 import com.vitorpamplona.amethyst.model.HexKey
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-interface EventInterface {
-    fun id(): HexKey
+@Serializable
+sealed interface EventInterface {
+    val id: HexKey
 
-    fun pubKey(): HexKey
+    @SerialName("pubkey")
+    val pubKey: HexKey
 
-    fun createdAt(): Long
-
-    fun kind(): Int
-
-    fun tags(): List<List<String>>
-
-    fun content(): String
-
-    fun sig(): HexKey
+    @SerialName("created_at")
+    val createdAt: Long
+    val kind: Int
+    val tags: List<List<String>>
+    val content: String
+    val sig: HexKey
 
     fun toJson(): String
 

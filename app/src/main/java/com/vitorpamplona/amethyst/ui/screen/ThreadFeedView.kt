@@ -325,7 +325,7 @@ fun NoteMaster(
                     )
             ) {
                 Column() {
-                    val eventContent = note.event?.content()
+                    val eventContent = note.event?.content
 
                     val canPreview = note.author == account.userProfile() ||
                         (note.author?.let { account.userProfile().isFollowing(it) } ?: true) ||
@@ -336,7 +336,7 @@ fun NoteMaster(
                             eventContent,
                             canPreview,
                             Modifier.fillMaxWidth(),
-                            note.event?.tags(),
+                            note.event?.tags,
                             MaterialTheme.colors.background,
                             accountViewModel,
                             navController

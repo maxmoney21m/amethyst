@@ -80,7 +80,7 @@ fun ChatroomCompose(
         } else if (noteEvent is ChannelMetadataEvent) {
             "${stringResource(R.string.channel_information_changed_to)} "
         } else {
-            noteEvent?.content()
+            noteEvent?.content
         }
         channel?.let { chan ->
             var hasNewMessages by remember { mutableStateOf<Boolean>(false) }
@@ -150,7 +150,7 @@ fun ChatroomCompose(
             LaunchedEffect(key1 = notificationCache, key2 = note) {
                 withContext(Dispatchers.IO) {
                     noteEvent?.let {
-                        hasNewMessages = it.createdAt() > notificationCache.cache.load(
+                        hasNewMessages = it.createdAt > notificationCache.cache.load(
                             "Room/${userToComposeOn.pubkeyHex}"
                         )
                     }

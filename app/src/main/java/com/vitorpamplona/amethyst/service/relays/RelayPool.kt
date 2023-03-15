@@ -2,7 +2,6 @@ package com.vitorpamplona.amethyst.service.relays
 
 import androidx.lifecycle.LiveData
 import com.vitorpamplona.amethyst.service.model.Event
-import com.vitorpamplona.amethyst.service.model.EventInterface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -55,7 +54,7 @@ object RelayPool : Relay.Listener {
         relays.forEach { it.sendFilterOnlyIfDisconnected() }
     }
 
-    fun send(signedEvent: EventInterface) {
+    fun send(signedEvent: Event) {
         relays.forEach { it.send(signedEvent) }
     }
 

@@ -2,20 +2,26 @@ package com.vitorpamplona.amethyst.service.model
 
 import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.toHexKey
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import nostr.postr.Utils
 import java.util.Date
 
 data class ReportedKey(val key: String, val reportType: ReportEvent.ReportType)
 
 // NIP 56 event.
+@Serializable
 class ReportEvent(
-    id: HexKey,
-    pubKey: HexKey,
-    createdAt: Long,
-    tags: List<List<String>>,
-    content: String,
-    sig: HexKey
-) : Event(id, pubKey, createdAt, kind, tags, content, sig) {
+    override val id: HexKey,
+    @SerialName("pubkey")
+    override val pubKey: HexKey,
+    @SerialName("created_at")
+    override val createdAt: Long,
+    override val tags: List<List<String>>,
+    override val content: String,
+    override val sig: HexKey
+) : Event() {
+    override val kind: Int = ReportEvent.kind
 
     private fun defaultReportType(): ReportType {
         // Works with old and new structures for report.
@@ -58,14 +64,14 @@ class ReportEvent(
         const val kind = 1984
 
         fun create(
-            reportedPost: EventInterface,
+            reportedPost: Event,
             type: ReportType,
             privateKey: ByteArray,
             content: String = "",
             createdAt: Long = Date().time / 1000
         ): ReportEvent {
-            val reportPostTag = listOf("e", reportedPost.id(), type.name.lowercase())
-            val reportAuthorTag = listOf("p", reportedPost.pubKey(), type.name.lowercase())
+            val reportPostTag = listOf("e", reportedPost.id, type.name.lowercase())
+            val reportAuthorTag = listOf("p", reportedPost.pubKey, type.name.lowercase())
 
             val pubKey = Utils.pubkeyCreate(privateKey).toHexKey()
             var tags: List<List<String>> = listOf(reportPostTag, reportAuthorTag)

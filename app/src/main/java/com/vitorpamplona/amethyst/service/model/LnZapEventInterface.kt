@@ -2,15 +2,14 @@ package com.vitorpamplona.amethyst.service.model
 
 import java.math.BigDecimal
 
-interface LnZapEventInterface : EventInterface {
+sealed class LnZapEventInterface : Event() {
+    abstract fun zappedPost(): List<String>
 
-    fun zappedPost(): List<String>
+    abstract fun zappedAuthor(): List<String>
 
-    fun zappedAuthor(): List<String>
+    abstract fun taggedAddresses(): List<ATag>
 
-    fun taggedAddresses(): List<ATag>
+    abstract fun amount(): BigDecimal?
 
-    fun amount(): BigDecimal?
-
-    fun containedPost(): Event?
+    abstract fun containedPost(): Event?
 }

@@ -1,18 +1,12 @@
 package com.vitorpamplona.amethyst.service.model
 
-import com.vitorpamplona.amethyst.model.HexKey
 import com.vitorpamplona.amethyst.model.tagSearch
+import kotlinx.serialization.Serializable
 
-open class BaseTextNoteEvent(
-    id: HexKey,
-    pubKey: HexKey,
-    createdAt: Long,
-    kind: Int,
-    tags: List<List<String>>,
-    content: String,
-    sig: HexKey
-) : Event(id, pubKey, createdAt, kind, tags, content, sig) {
+@Serializable
+sealed class BaseTextNoteEvent : Event() {
     fun mentions() = taggedUsers()
+
     fun replyTos() = tags.filter { it.firstOrNull() == "e" }.mapNotNull { it.getOrNull(1) }
 
     fun taggedAddresses() = tags.filter { it.firstOrNull() == "a" }.mapNotNull {

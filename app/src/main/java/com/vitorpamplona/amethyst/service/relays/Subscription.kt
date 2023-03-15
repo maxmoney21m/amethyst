@@ -1,8 +1,10 @@
 package com.vitorpamplona.amethyst.service.relays
 
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonArray
-import com.google.gson.JsonObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import java.util.UUID
 
 data class Subscription(
@@ -15,16 +17,13 @@ data class Subscription(
         onEOSE?.let { it(l) }
     }
 
-    fun toJson(): String {
-        return GsonBuilder().create().toJson(toJsonObject())
-    }
-
-    fun toJsonObject(): JsonObject {
-        val jsonObject = JsonObject()
-        jsonObject.addProperty("id", id)
-        typedFilters?.run {
-            jsonObject.add("typedFilters", JsonArray().apply { typedFilters?.forEach { add(it.toJsonObject()) } })
+    fun toJsonString(): String = Json.encodeToString(
+        JsonObject.serializer(),
+        buildJsonObject {
+            put("id", JsonPrimitive(id))
+            typedFilters?.let { filters ->
+                put("typedFilters", JsonArray(filters.map { Json.encodeToJsonElement(TypedFilter.serializer(), it) }))
+            }
         }
-        return jsonObject
-    }
+    )
 }

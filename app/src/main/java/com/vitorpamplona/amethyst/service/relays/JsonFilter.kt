@@ -1,18 +1,33 @@
 package com.vitorpamplona.amethyst.service.relays
 
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonArray
-import com.google.gson.JsonObject
 import com.vitorpamplona.amethyst.service.model.Event
-import java.io.Serializable
-import java.util.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonTransformingSerializer
+import kotlinx.serialization.json.jsonObject
 
 interface Filter {
     fun match(event: Event): Boolean
     fun toShortString(): String
 }
 
+object JsonFilterSerializer : JsonTransformingSerializer<JsonFilter>(JsonFilter.serializer()) {
+    override fun transformDeserialize(element: JsonElement): JsonElement {
+        val obj = element.jsonObject.toMutableMap()
+
+        obj["tags"] = JsonObject(
+            obj.entries
+                .filter { it.key.startsWith("#") }
+                .associate { it.key.substring(1) to it.value }
+        )
+
+        return JsonObject(obj)
+    }
+}
+
+@Serializable
 class JsonFilter(
     val ids: List<String>? = null,
     val authors: List<String>? = null,
@@ -22,38 +37,7 @@ class JsonFilter(
     val until: Long? = null,
     val limit: Int? = null,
     val search: String? = null
-) : Filter, Serializable {
-    fun toJson(): String {
-        val jsonObject = JsonObject()
-        ids?.run {
-            jsonObject.add("ids", JsonArray().apply { ids.forEach { add(it) } })
-        }
-        authors?.run {
-            jsonObject.add("authors", JsonArray().apply { authors.forEach { add(it) } })
-        }
-        kinds?.run {
-            jsonObject.add("kinds", JsonArray().apply { kinds.forEach { add(it) } })
-        }
-        tags?.run {
-            entries.forEach { kv ->
-                jsonObject.add("#${kv.key}", JsonArray().apply { kv.value.forEach { add(it) } })
-            }
-        }
-        since?.run {
-            jsonObject.addProperty("since", since)
-        }
-        until?.run {
-            jsonObject.addProperty("until", until)
-        }
-        limit?.run {
-            jsonObject.addProperty("limit", limit)
-        }
-        search?.run {
-            jsonObject.addProperty("search", search)
-        }
-        return gson.toJson(jsonObject)
-    }
-
+) : Filter {
     override fun match(event: Event): Boolean {
         if (ids?.any { event.id == it } == false) return false
         if (kinds?.any { event.kind == it } == false) return false
@@ -67,7 +51,7 @@ class JsonFilter(
         return true
     }
 
-    override fun toString(): String = "JsonFilter${toJson()}"
+//    override fun toString(): String = "JsonFilter${toJson()}"
 
     override fun toShortString(): String {
         val list = ArrayList<String>()
@@ -98,46 +82,5 @@ class JsonFilter(
         return list.joinToString()
     }
 
-    companion object {
-        val gson: Gson = GsonBuilder().create()
-
-        fun fromJson(json: String): JsonFilter {
-            val jsonFilter = gson.fromJson(json, JsonObject::class.java)
-            return fromJson(jsonFilter)
-        }
-
-        val declaredFields = JsonFilter::class.java.declaredFields.map { it.name }
-        fun fromJson(json: JsonObject): JsonFilter {
-            // sanity check
-            if (json.keySet().any { !(it.startsWith("#") || it in declaredFields) }) {
-                println("Filter $json contains unknown parameters.")
-            }
-            return JsonFilter(
-                ids = if (json.has("ids")) json.getAsJsonArray("ids").map { it.asString } else null,
-                authors = if (json.has("authors")) {
-                    json.getAsJsonArray("authors")
-                        .map { it.asString }
-                } else {
-                    null
-                },
-                kinds = if (json.has("kinds")) {
-                    json.getAsJsonArray("kinds")
-                        .map { it.asInt }
-                } else {
-                    null
-                },
-                tags = json
-                    .entrySet()
-                    .filter { it.key.startsWith("#") }
-                    .associate {
-                        it.key.substring(1) to it.value.asJsonArray.map { it.asString }
-                    }
-                    .ifEmpty { null },
-                since = if (json.has("since")) json.get("since").asLong else null,
-                until = if (json.has("until")) json.get("until").asLong else null,
-                limit = if (json.has("limit")) json.get("limit").asInt else null,
-                search = if (json.has("search")) json.get("search").asString else null
-            )
-        }
-    }
+    fun toJsonString() = Json.encodeToString(JsonFilterSerializer, this)
 }

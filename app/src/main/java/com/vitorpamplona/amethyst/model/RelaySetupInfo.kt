@@ -1,7 +1,9 @@
 package com.vitorpamplona.amethyst.model
 
 import com.vitorpamplona.amethyst.service.relays.FeedType
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class RelaySetupInfo(
     val url: String,
     val read: Boolean,

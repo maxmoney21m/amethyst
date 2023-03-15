@@ -119,7 +119,7 @@ fun MainTopBar(scaffoldState: ScaffoldState, accountViewModel: AccountViewModel)
                                     Client.allSubscriptions().map {
                                         "$it ${
                                         Client.getSubscriptionFilters(it)
-                                            .joinToString { it.filter.toJson() }
+                                            .joinToString { it.filter.toJsonString() }
                                         }"
                                     }.forEach {
                                         Log.d("STATE DUMP", it)

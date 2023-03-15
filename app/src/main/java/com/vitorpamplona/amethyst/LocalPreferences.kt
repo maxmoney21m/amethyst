@@ -3,8 +3,6 @@ package com.vitorpamplona.amethyst
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
-import com.google.gson.GsonBuilder
-import com.google.gson.reflect.TypeToken
 import com.vitorpamplona.amethyst.model.Account
 import com.vitorpamplona.amethyst.model.RelaySetupInfo
 import com.vitorpamplona.amethyst.model.toByteArray
@@ -12,6 +10,9 @@ import com.vitorpamplona.amethyst.service.model.ContactListEvent
 import com.vitorpamplona.amethyst.service.model.Event
 import com.vitorpamplona.amethyst.service.model.Event.Companion.getRefinedEvent
 import fr.acinq.secp256k1.Hex
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import nostr.postr.Persona
 import nostr.postr.toHex
 import nostr.postr.toNpub
@@ -51,8 +52,6 @@ private object PrefKeys {
     const val HIDE_BLOCK_ALERT_DIALOG = "hide_block_alert_dialog"
     val LAST_READ: (String) -> String = { route -> "last_read_route_$route" }
 }
-
-private val gson = GsonBuilder().create()
 
 object LocalPreferences {
     private const val comma = ","
@@ -178,11 +177,11 @@ object LocalPreferences {
             account.loggedIn.pubKey.let { putString(PrefKeys.NOSTR_PUBKEY, it.toHex()) }
             putStringSet(PrefKeys.FOLLOWING_CHANNELS, account.followingChannels)
             putStringSet(PrefKeys.HIDDEN_USERS, account.hiddenUsers)
-            putString(PrefKeys.RELAYS, gson.toJson(account.localRelays))
+            putString(PrefKeys.RELAYS, Json.encodeToString(account.localRelays))
             putStringSet(PrefKeys.DONT_TRANSLATE_FROM, account.dontTranslateFrom)
-            putString(PrefKeys.LANGUAGE_PREFS, gson.toJson(account.languagePreferences))
+            putString(PrefKeys.LANGUAGE_PREFS, Json.encodeToString(account.languagePreferences))
             putString(PrefKeys.TRANSLATE_TO, account.translateTo)
-            putString(PrefKeys.ZAP_AMOUNTS, gson.toJson(account.zapAmountChoices))
+            putString(PrefKeys.ZAP_AMOUNTS, Json.encodeToString(account.zapAmountChoices))
             putString(PrefKeys.LATEST_CONTACT_LIST, Event.gson.toJson(account.backupContactList))
             putBoolean(PrefKeys.HIDE_DELETE_REQUEST_DIALOG, account.hideDeleteRequestDialog)
             putBoolean(PrefKeys.HIDE_BLOCK_ALERT_DIALOG, account.hideBlockAlertDialog)
@@ -197,18 +196,16 @@ object LocalPreferences {
             val privKey = getString(PrefKeys.NOSTR_PRIVKEY, null)
             val followingChannels = getStringSet(PrefKeys.FOLLOWING_CHANNELS, null) ?: setOf()
             val hiddenUsers = getStringSet(PrefKeys.HIDDEN_USERS, emptySet()) ?: setOf()
-            val localRelays = gson.fromJson(
-                getString(PrefKeys.RELAYS, "[]"),
-                object : TypeToken<Set<RelaySetupInfo>>() {}.type
-            ) ?: setOf<RelaySetupInfo>()
+            val localRelays = Json.decodeFromString<Set<RelaySetupInfo>>(
+                getString(PrefKeys.RELAYS, "[]") ?: "[]"
+            )
 
             val dontTranslateFrom = getStringSet(PrefKeys.DONT_TRANSLATE_FROM, null) ?: setOf()
             val translateTo = getString(PrefKeys.TRANSLATE_TO, null) ?: Locale.getDefault().language
 
-            val zapAmountChoices = gson.fromJson(
-                getString(PrefKeys.ZAP_AMOUNTS, "[]"),
-                object : TypeToken<List<Long>>() {}.type
-            ) ?: listOf(500L, 1000L, 5000L)
+            val zapAmountChoices = Json.decodeFromString<List<Long>>(
+                getString(PrefKeys.ZAP_AMOUNTS, "[]") ?: "[500, 1000, 5000]"
+            )
 
             val latestContactList = try {
                 getString(PrefKeys.LATEST_CONTACT_LIST, null)?.let {
@@ -222,10 +219,7 @@ object LocalPreferences {
 
             val languagePreferences = try {
                 getString(PrefKeys.LANGUAGE_PREFS, null)?.let {
-                    gson.fromJson(
-                        it,
-                        object : TypeToken<Map<String, String>>() {}.type
-                    ) as Map<String, String>
+                    Json.decodeFromString<Map<String, String>>(it)
                 } ?: mapOf()
             } catch (e: Throwable) {
                 e.printStackTrace()
